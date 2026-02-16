@@ -108,6 +108,7 @@ kestrel/
 | [BLOOM.md](./BLOOM.md) | Unreal-style bloom with per-vertex emissive |
 | [TRANSPARENCY.md](./TRANSPARENCY.md) | Weighted Blended Order-Independent Transparency |
 | [BVH-RAYCASTING.md](./BVH-RAYCASTING.md) | BVH construction, raycasting, spatial queries |
+| [GEOMETRY.md](./GEOMETRY.md) | Parametric primitives, BufferGeometry, vertex layout |
 | [ASSETS.md](./ASSETS.md) | GLTF loading, Draco decoding, KTX2/Basis transcoding |
 | [REACT.md](./REACT.md) | React bindings and reconciler |
 | [HTML-OVERLAY.md](./HTML-OVERLAY.md) | DOM element overlay system |
