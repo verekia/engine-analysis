@@ -1,5 +1,3 @@
-Donkey variant:
-
 I want to create a minimal 3D engine for games that has a developer experience somewhat similar to three.js but with very high performance (unlike three.js). The engine should support:
 - both webgl and webgpu. If WebGPU has useful advanced features unavailable in WebGL, feel free to use them, but there should always be a webgl fallback 
 - basic and Lambert materials
