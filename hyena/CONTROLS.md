@@ -6,7 +6,7 @@
 
 ## Coordinate System
 
-Since Kestrel uses Z-up:
+Since Hyena uses Z-up:
 - **Orbit horizontal** (azimuth): rotates around the Z axis
 - **Orbit vertical** (elevation): rotates from the XY plane toward +Z
 - **Pan**: moves the target point in the camera's local XZ plane (screen-space horizontal/vertical)
@@ -203,7 +203,7 @@ engine.onFrame((dt) => controls.update(dt))
 ### React
 
 ```tsx
-import { OrbitControls } from '@kestrel/react'
+import { OrbitControls } from '@hyena/react'
 
 <Canvas>
   <OrbitControls target={[0, 0, 0]} damping={0.1} />

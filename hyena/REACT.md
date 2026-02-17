@@ -2,12 +2,12 @@
 
 ## Overview
 
-`@kestrel/react` provides React bindings similar to React Three Fiber (R3F). It uses a custom `react-reconciler` to map JSX elements directly to Kestrel scene objects, enabling declarative 3D scene construction with React's component model.
+`@hyena/react` provides React bindings similar to React Three Fiber (R3F). It uses a custom `react-reconciler` to map JSX elements directly to Hyena scene objects, enabling declarative 3D scene construction with React's component model.
 
 ## Core Architecture
 
 ```
-React Tree                          Kestrel Scene Graph
+React Tree                          Hyena Scene Graph
 ──────────                          ──────────────────
 <Canvas>                            Engine + Scene
   <group position={[0,0,1]}>       → Group (pos: 0,0,1)
@@ -27,13 +27,13 @@ React Tree                          Kestrel Scene Graph
 
 ## Reconciler
 
-The reconciler implements `react-reconciler`'s host config interface to bridge React's virtual DOM to Kestrel's scene graph:
+The reconciler implements `react-reconciler`'s host config interface to bridge React's virtual DOM to Hyena's scene graph:
 
 ```typescript
 import Reconciler from 'react-reconciler'
 
 const reconciler = Reconciler({
-  // Create a Kestrel object from a JSX element type
+  // Create a Hyena object from a JSX element type
   createInstance(type: string, props: any) {
     switch (type) {
       case 'mesh': return new Mesh()
@@ -88,7 +88,7 @@ const reconciler = Reconciler({
 
 ### Property Application
 
-Props are applied to Kestrel objects via a generic `applyProps` function:
+Props are applied to Hyena objects via a generic `applyProps` function:
 
 ```typescript
 const applyProps = (instance: any, props: Record<string, any>) => {
@@ -116,7 +116,7 @@ const applyProps = (instance: any, props: Record<string, any>) => {
 
 ## `<Canvas>` Component
 
-The root component that creates the Kestrel engine and provides context:
+The root component that creates the Hyena engine and provides context:
 
 ```typescript
 interface CanvasProps {
@@ -277,7 +277,7 @@ The engine performs raycasting on pointer events and dispatches to the hit mesh.
 
 ## `<primitive>` Element
 
-For inserting pre-built Kestrel objects (like GLTF scenes) directly:
+For inserting pre-built Hyena objects (like GLTF scenes) directly:
 
 ```tsx
 const gltf = useLoader(GLTFLoader, '/models/scene.glb')
@@ -289,7 +289,7 @@ The reconciler attaches the existing Object3D to the parent without creating a n
 ## HTML Overlay Integration
 
 ```tsx
-import { Html } from '@kestrel/react'
+import { Html } from '@hyena/react'
 
 const HealthBar = ({ mesh }: { mesh: Mesh }) => (
   <Html position={[0, 0, 2]} occlude>
@@ -304,7 +304,7 @@ See [HTML-OVERLAY.md](./HTML-OVERLAY.md) for the overlay system details.
 
 ## Automatic Disposal
 
-When a component unmounts, its Kestrel resources are automatically disposed:
+When a component unmounts, its Hyena resources are automatically disposed:
 
 ```
 Component unmounts
@@ -322,7 +322,7 @@ Shared resources (geometries, materials, textures used by multiple components) u
 ## OrbitControls Integration
 
 ```tsx
-import { OrbitControls } from '@kestrel/react'
+import { OrbitControls } from '@hyena/react'
 
 const App = () => (
   <Canvas>

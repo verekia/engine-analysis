@@ -4,11 +4,11 @@
 
 **2000+ draw calls at 60 fps on recent mobile phones** (e.g., iPhone 14, Pixel 7, Samsung S23).
 
-This is the central design constraint. Every architectural decision in Kestrel is informed by this target.
+This is the central design constraint. Every architectural decision in Hyena is informed by this target.
 
 ## Why Three.js is Slow
 
-To understand Kestrel's approach, we need to understand where three.js spends its time:
+To understand Hyena's approach, we need to understand where three.js spends its time:
 
 1. **Per-object JavaScript overhead** (~50% of frame time for 2000 objects):
    - `updateWorldMatrix()` creates temporary `Matrix4` objects
@@ -27,7 +27,7 @@ To understand Kestrel's approach, we need to understand where three.js spends it
 4. **Render list rebuild** (~10%):
    - Every frame: collect objects, sort, filter
 
-Kestrel eliminates each of these.
+Hyena eliminates each of these.
 
 ## Strategy 1: Zero-Allocation Render Loop
 
@@ -186,7 +186,7 @@ color *= textureSample(...);
 shadow = sampleShadow(...);
 ```
 
-Kestrel generates all needed variants at material creation time and caches them.
+Hyena generates all needed variants at material creation time and caches them.
 
 ## Performance Budget Breakdown (2000 draw calls, 60 fps target)
 
@@ -214,7 +214,7 @@ Total frame budget:             16.6 ms
 
 ## Comparison with Three.js
 
-| Metric | Three.js (2000 calls) | Kestrel (2000 calls) |
+| Metric | Three.js (2000 calls) | Hyena (2000 calls) |
 |---|---|---|
 | JS frame time | ~12ms | ~4ms |
 | State changes | ~2000 | ~50 |
@@ -226,7 +226,7 @@ Total frame budget:             16.6 ms
 
 ## Mobile-Specific Optimizations
 
-- **Tile-based GPU awareness**: MSAA is nearly free on mobile tile-based renderers (Adreno, Mali, Apple GPU) when using the load/store architecture correctly. Kestrel configures render passes with `loadOp: 'clear'` and `storeOp: 'discard'` on depth where possible.
+- **Tile-based GPU awareness**: MSAA is nearly free on mobile tile-based renderers (Adreno, Mali, Apple GPU) when using the load/store architecture correctly. Hyena configures render passes with `loadOp: 'clear'` and `storeOp: 'discard'` on depth where possible.
 - **Half-resolution bloom**: The bloom chain operates at half resolution, which is fine for the soft glow effect and dramatically reduces fragment shader pressure.
 - **Texture compression**: KTX2/Basis transcodes to ASTC on mobile (native format), avoiding costly runtime decompression.
 - **Shader simplicity**: Lambert shading (not PBR) means fewer texture samples and fewer ALU operations per fragment — exactly what mobile GPUs need.

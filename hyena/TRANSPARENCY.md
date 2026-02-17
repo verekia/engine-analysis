@@ -11,7 +11,7 @@ Transparency in real-time 3D is notoriously difficult because correct blending r
 
 ## Solution: Weighted Blended Order-Independent Transparency
 
-Kestrel uses **Weighted Blended OIT** (McGuire & Bavoil, 2013). This technique:
+Hyena uses **Weighted Blended OIT** (McGuire & Bavoil, 2013). This technique:
 
 - Renders transparent objects in **any order** (no sorting)
 - Handles overlapping and intersecting geometry correctly
@@ -154,7 +154,7 @@ WBOIT is an approximation. Known limitations:
 1. **Same-depth fragments**: When two transparent fragments have the same depth, the weight function can't distinguish them. This is rarely visible in practice.
 2. **High-opacity fragments**: Very opaque transparent objects (opacity > 0.9) can have slight color bleeding. For near-opaque objects, consider using alpha testing (discard) instead.
 3. **Color accuracy**: The weighted average is an approximation of true back-to-front compositing. For 2–3 overlapping transparent layers, the result is visually indistinguishable from correct blending. For 10+ layers at the same pixel, slight color shifts may occur.
-4. **No refraction**: WBOIT doesn't support screen-space refraction. This is a non-goal for Kestrel's minimal material set.
+4. **No refraction**: WBOIT doesn't support screen-space refraction. This is a non-goal for Hyena's minimal material set.
 
 ## Why Not Other Approaches?
 

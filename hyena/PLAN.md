@@ -1,8 +1,8 @@
-# Kestrel — Minimal High-Performance 3D Engine
+# Hyena — Minimal High-Performance 3D Engine
 
 ## Vision
 
-Kestrel is a minimal, high-performance 3D game engine for the web. It provides a developer experience reminiscent of three.js — intuitive scene graph, familiar material/geometry/mesh abstractions — but is architecturally designed from the ground up for raw performance. The target is **2000+ draw calls at 60 fps on recent mobile devices**, without relying on instancing.
+Hyena is a minimal, high-performance 3D game engine for the web. It provides a developer experience reminiscent of three.js — intuitive scene graph, familiar material/geometry/mesh abstractions — but is architecturally designed from the ground up for raw performance. The target is **2000+ draw calls at 60 fps on recent mobile devices**, without relying on instancing.
 
 ## Core Technical Decisions
 
@@ -10,7 +10,7 @@ Kestrel is a minimal, high-performance 3D game engine for the web. It provides a
 
 - **WebGPU** is the primary target. It offers render bundles (pre-recorded command buffers), bind groups, compute shaders, and dramatically lower driver overhead.
 - **WebGL2** is the mandatory fallback for devices and browsers without WebGPU support.
-- A thin `Device` abstraction layer normalizes both APIs behind a unified interface. The abstraction is deliberately minimal — it doesn't try to be a general-purpose GPU abstraction, just enough for Kestrel's pipeline.
+- A thin `Device` abstraction layer normalizes both APIs behind a unified interface. The abstraction is deliberately minimal — it doesn't try to be a general-purpose GPU abstraction, just enough for Hyena's pipeline.
 - Where WebGPU offers advanced features (render bundles, compute-based skinning, indirect draws), we use them. The WebGL2 path has equivalent but potentially slower implementations.
 
 ### 2. Coordinate System: Z-Up, Right-Handed
@@ -21,7 +21,7 @@ Kestrel is a minimal, high-performance 3D game engine for the web. It provides a
 
 ### 3. Performance Philosophy
 
-The fundamental insight is that three.js is slow not because of WebGL, but because of **per-frame JavaScript overhead**: uniform uploads, state validation, temporary object allocation, and GC pressure. Kestrel eliminates these:
+The fundamental insight is that three.js is slow not because of WebGL, but because of **per-frame JavaScript overhead**: uniform uploads, state validation, temporary object allocation, and GC pressure. Hyena eliminates these:
 
 - **Structure-of-Arrays (SoA)** for transforms: a single `Float32Array` holds all world matrices contiguously.
 - **Dirty flags** propagate through the scene graph. Only changed matrices are recomputed.
@@ -68,7 +68,7 @@ DOM elements positioned at 3D world coordinates, projected to screen space each 
 ## Project Structure
 
 ```
-kestrel/
+hyena/
 ├── src/
 │   ├── core/           # Engine, Scene, Renderer
 │   ├── math/           # Vec3, Vec4, Mat4, Quat, Pool
@@ -108,6 +108,7 @@ kestrel/
 | [BLOOM.md](./BLOOM.md) | Unreal-style bloom with per-vertex emissive |
 | [TRANSPARENCY.md](./TRANSPARENCY.md) | Weighted Blended Order-Independent Transparency |
 | [BVH-RAYCASTING.md](./BVH-RAYCASTING.md) | BVH construction, raycasting, spatial queries |
+| [GEOMETRY.md](./GEOMETRY.md) | Parametric primitives, BufferGeometry, vertex layout |
 | [ASSETS.md](./ASSETS.md) | GLTF loading, Draco decoding, KTX2/Basis transcoding |
 | [REACT.md](./REACT.md) | React bindings and reconciler |
 | [HTML-OVERLAY.md](./HTML-OVERLAY.md) | DOM element overlay system |
@@ -117,7 +118,7 @@ kestrel/
 ## API Preview
 
 ```typescript
-import { Engine, Scene, Mesh, BoxGeometry, LambertMaterial, DirectionalLight, AmbientLight } from 'kestrel'
+import { Engine, Scene, Mesh, BoxGeometry, LambertMaterial, DirectionalLight, AmbientLight } from 'hyena'
 
 const engine = await Engine.create({ canvas: document.getElementById('canvas') as HTMLCanvasElement })
 const scene = new Scene()
@@ -138,7 +139,7 @@ engine.run(scene)
 ### React Usage
 
 ```tsx
-import { Canvas, useFrame } from '@kestrel/react'
+import { Canvas, useFrame } from '@hyena/react'
 import { useRef } from 'react'
 
 const Spinner = () => {

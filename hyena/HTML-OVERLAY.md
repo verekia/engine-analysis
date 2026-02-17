@@ -166,7 +166,7 @@ overlay.remove(label)
 ### React API
 
 ```tsx
-import { Html } from '@kestrel/react'
+import { Html } from '@hyena/react'
 
 // Basic usage — positioned at parent's world position
 const NameTag = () => (

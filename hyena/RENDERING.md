@@ -4,7 +4,7 @@
 
 ### Device Interface
 
-The `Device` interface is the sole point of contact between Kestrel's renderer and the GPU. It is deliberately minimal — not a general-purpose GPU abstraction, but exactly the surface area Kestrel needs.
+The `Device` interface is the sole point of contact between Hyena's renderer and the GPU. It is deliberately minimal — not a general-purpose GPU abstraction, but exactly the surface area Hyena needs.
 
 ```typescript
 interface Device {

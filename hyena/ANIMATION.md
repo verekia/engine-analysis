@@ -2,7 +2,7 @@
 
 ## Overview
 
-Kestrel supports skeletal animation with GPU skinning, per-bone TRS channels, and simple crossfade blending between animation states. The system is designed for game characters: walk, run, idle, attack — with smooth transitions.
+Hyena supports skeletal animation with GPU skinning, per-bone TRS channels, and simple crossfade blending between animation states. The system is designed for game characters: walk, run, idle, attack — with smooth transitions.
 
 ## Skeleton
 
