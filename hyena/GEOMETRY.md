@@ -2,11 +2,11 @@
 
 ## Overview
 
-Kestrel provides parametric geometry generators for common 3D primitives and a `BufferGeometry` base class for custom or loaded geometry. All generators produce indexed vertex buffers with positions, normals, and UVs — ready for GPU upload.
+Hyena provides parametric geometry generators for common 3D primitives and a `BufferGeometry` base class for custom or loaded geometry. All generators produce indexed vertex buffers with positions, normals, and UVs — ready for GPU upload.
 
 ## BufferGeometry
 
-The base class for all geometry in Kestrel:
+The base class for all geometry in Hyena:
 
 ```typescript
 interface BufferGeometry {
@@ -66,7 +66,7 @@ Options have sensible defaults. All primitives are generated in local space cent
 
 ### Z-Up Convention
 
-All primitives respect Kestrel's Z-up, right-handed coordinate system:
+All primitives respect Hyena's Z-up, right-handed coordinate system:
 - **Plane** lies in the XY plane (normal = +Z)
 - **Box** is axis-aligned with width=X, depth=Y, height=Z
 - **Cylinder/Cone/Capsule** stand upright along the Z axis

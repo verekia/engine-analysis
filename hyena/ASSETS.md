@@ -2,7 +2,7 @@
 
 ## Overview
 
-Kestrel supports GLTF 2.0 as its primary asset format, with Draco mesh compression and KTX2/Basis Universal texture compression. All heavy decoding runs in Web Workers to keep the main thread responsive.
+Hyena supports GLTF 2.0 as its primary asset format, with Draco mesh compression and KTX2/Basis Universal texture compression. All heavy decoding runs in Web Workers to keep the main thread responsive.
 
 ## GLTF Loader
 
@@ -23,12 +23,12 @@ Kestrel supports GLTF 2.0 as its primary asset format, with Draco mesh compressi
 | Draco compression (KHR_draco_mesh_compression) | Supported |
 | KTX2 textures (KHR_texture_basisu) | Supported |
 | Morph targets | Not supported |
-| Cameras | Not supported (use Kestrel cameras) |
+| Cameras | Not supported (use Hyena cameras) |
 | Extensions: KHR_materials_unlit | Supported → BasicMaterial |
 
 ### Coordinate System Conversion
 
-GLTF uses Y-up, right-handed. Kestrel uses Z-up, right-handed. On import, a root rotation is applied:
+GLTF uses Y-up, right-handed. Hyena uses Z-up, right-handed. On import, a root rotation is applied:
 
 ```
 Y-up to Z-up rotation matrix:
@@ -48,9 +48,9 @@ The rotation is baked into the data at load time — no runtime cost.
 
 ### Material Mapping
 
-GLTF PBR materials are converted to Kestrel materials:
+GLTF PBR materials are converted to Hyena materials:
 
-| GLTF PBR Property | Kestrel Mapping |
+| GLTF PBR Property | Hyena Mapping |
 |---|---|
 | `baseColorFactor` | `LambertMaterial.color` |
 | `baseColorTexture` | `LambertMaterial.colorTexture` |
@@ -61,7 +61,7 @@ GLTF PBR materials are converted to Kestrel materials:
 | `alphaMode: "MASK"` | Alpha test (discard below cutoff) |
 | `doubleSided: true` | `side: 'both'` |
 
-PBR-specific properties (metallic, roughness, normal maps) are ignored — Kestrel is Lambert-only by design.
+PBR-specific properties (metallic, roughness, normal maps) are ignored — Hyena is Lambert-only by design.
 
 ### Custom: `_materialindex` Vertex Attribute
 
@@ -121,7 +121,7 @@ GLTFLoader.load(url):
      c. Read _materialindex attribute if present
      d. Create Geometry from vertex data
   5. For each material:
-     a. Map GLTF PBR properties to Kestrel material
+     a. Map GLTF PBR properties to Hyena material
      b. If textures use KTX2 → send to BasisDecoder worker
      c. Otherwise → load images directly
   6. For each skin:

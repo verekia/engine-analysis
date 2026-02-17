@@ -2,7 +2,7 @@
 
 ## System Overview
 
-Kestrel is structured as a set of loosely coupled modules connected through a central `Engine` coordinator. The engine owns the render loop, the GPU device, and the frame timing. Everything else — scene, materials, animations, controls — plugs into the engine but does not depend on each other directly.
+Hyena is structured as a set of loosely coupled modules connected through a central `Engine` coordinator. The engine owns the render loop, the GPU device, and the frame timing. Everything else — scene, materials, animations, controls — plugs into the engine but does not depend on each other directly.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -144,7 +144,7 @@ Each outputs: `positions` (Float32Array), `normals` (Float32Array), `uvs` (Float
 - **`HtmlOverlay`**: Manages a pool of absolutely-positioned DOM elements. Each frame, projects their 3D `worldPosition` to screen coordinates via the camera's view-projection matrix and applies a CSS `transform: translate(x, y)`. Optional depth-based occlusion.
 
 ### `react/`
-- **Reconciler**: Custom `react-reconciler` host config that maps JSX elements to Kestrel scene objects.
+- **Reconciler**: Custom `react-reconciler` host config that maps JSX elements to Hyena scene objects.
 - **`<Canvas>`**: Root component. Creates `Engine`, provides context.
 - **Hooks**: `useFrame(callback)`, `useEngine()`, `useScene()`, `useLoader(loader, url)`.
 - **Automatic disposal**: Geometries, materials, textures are disposed when their component unmounts.

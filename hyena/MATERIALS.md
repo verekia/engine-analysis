@@ -2,7 +2,7 @@
 
 ## Overview
 
-Kestrel ships two materials: **BasicMaterial** (unlit) and **LambertMaterial** (diffuse lighting). Both support the material index system for per-vertex color and emissive control.
+Hyena ships two materials: **BasicMaterial** (unlit) and **LambertMaterial** (diffuse lighting). Both support the material index system for per-vertex color and emissive control.
 
 ## Material Index System
 
