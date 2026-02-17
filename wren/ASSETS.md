@@ -1,6 +1,112 @@
-# 06 — Textures: Color, AO, KTX2 & Basis Universal
+# Asset Loading (GLTF, Draco, KTX2, Basis)
 
-## Texture Abstraction
+This document covers asset loading systems for GLTF models, Draco mesh compression, and KTX2/Basis Universal texture compression.
+
+## GLTF Loader
+
+Loads glTF 2.0 files (.gltf + .bin, or .glb). Returns a structured result containing scenes, meshes, materials, textures, animations, and skeletons.
+
+```ts
+interface GLTFResult {
+  scenes: GroupNode[]
+  meshes: MeshNode[]
+  skinnedMeshes: SkinnedMeshNode[]
+  materials: Material[]
+  textures: TextureHandle[]
+  animations: AnimationClip[]
+  skeletons: Skeleton[]
+}
+
+const loadGLTF = async (
+  url: string,
+  device: WrenDevice,
+  options?: {
+    draco?: DracoDecoder        // Pre-initialized Draco decoder
+    ktx2?: KTX2Transcoder       // Pre-initialized KTX2 transcoder
+  }
+): Promise<GLTFResult>
+```
+
+### GLTF Processing Pipeline
+
+1. **Parse**: Read JSON (or GLB header + JSON chunk)
+2. **Load buffers**: Fetch external .bin files or extract GLB binary chunk
+3. **Decode compressed meshes**: If a mesh uses `KHR_draco_mesh_compression`, send the compressed buffer to the Draco Web Worker for decoding
+4. **Process meshes**: Convert accessor data to `Geometry` objects, applying the Y-up to Z-up rotation
+5. **Process materials**: Map glTF PBR materials to Wren's Basic/Lambert materials (PBR metallic-roughness is approximated as Lambert with the base color)
+6. **Load textures**: Decode images or KTX2 textures
+7. **Process animations**: Convert animation samplers to `AnimationClip` objects
+8. **Process skins**: Build `Skeleton` objects from joint hierarchies
+9. **Build scene graph**: Construct the node hierarchy
+
+### Coordinate System Conversion
+
+GLTF uses Y-up, right-handed. Wren uses Z-up, right-handed. On import, the root of each GLTF scene is wrapped in a group node with a -90 degree rotation around X:
+
+```ts
+const gltfToWren = mat4FromRotationX(-Math.PI / 2)
+```
+
+This rotation is baked into the root group's transform and propagates to all children automatically.
+
+### Custom Attributes
+
+The loader recognizes custom vertex attributes prefixed with `_`:
+- `_materialindex` → Maps to `_materialindex` attribute for material index system
+- Other custom attributes are preserved and accessible via `geometry.attributes`
+
+## Draco Decoder
+
+The Draco decoder runs in a Web Worker to avoid blocking the main thread:
+
+```ts
+interface DracoDecoder {
+  decode(buffer: ArrayBuffer): Promise<DecodedMesh>
+  dispose(): void
+}
+
+interface DecodedMesh {
+  positions: Float32Array
+  normals: Float32Array | null
+  uvs: Float32Array | null
+  colors: Float32Array | null
+  indices: Uint16Array | Uint32Array
+  customAttributes: Map<string, { data: TypedArray, itemSize: number }>
+}
+
+const createDracoDecoder = async (): Promise<DracoDecoder>
+```
+
+### Worker Architecture
+
+```
+Main Thread                          Worker Thread
+──────────                           ─────────────
+createDracoDecoder()  ──────────►    Load draco_decoder.wasm
+                     ◄──────────    Module ready
+
+decode(buffer)        ──────────►    DracoDecoder.decode(buffer)
+  (transfer)                         Read attributes
+                     ◄──────────    Return typed arrays
+                       (transfer)
+```
+
+The compressed buffer and decoded arrays are transferred (not copied) between threads using `postMessage` with transferable objects.
+
+### Initialization
+
+The WASM module (~300KB) is loaded lazily on first `createDracoDecoder()` call. The decoder URL can be configured:
+
+```ts
+const decoder = await createDracoDecoder({
+  wasmUrl: '/draco/draco_decoder.wasm',
+  workerUrl: '/draco/draco_worker.js',  // Optional: custom worker script
+})
+```
+
+## Textures
+
+### Texture Abstraction
 
 ```ts
 interface WrenTexture {
@@ -34,8 +140,6 @@ interface SamplerDescriptor {
   maxAnisotropy: number            // 1-16, default 4
 }
 ```
-
-## Texture Types
 
 ### Color Textures
 
@@ -82,7 +186,7 @@ ao = mix(1.0, ao, u_aoIntensity);
 litColor *= ao;
 ```
 
-### KTX2 / Basis Universal Compressed Textures
+## KTX2 / Basis Universal Compressed Textures
 
 GPU-compressed textures that are transcoded at runtime to the best format supported by the device.
 
@@ -110,9 +214,9 @@ const createKTX2Transcoder = async (options?: {
 }): Promise<KTX2Transcoder>
 ```
 
-## KTX2 Transcoding Pipeline
+### KTX2 Transcoding Pipeline
 
-### Target Format Selection
+#### Target Format Selection
 
 At device initialization, probe for supported compressed texture formats:
 
@@ -134,7 +238,7 @@ Priority order:
 3. **ETC2** — Guaranteed on all WebGL2 devices, lower quality than BC7/ASTC
 4. **RGBA8** — Uncompressed fallback (if no compressed format is available)
 
-### Worker-Based Transcoding
+#### Worker-Based Transcoding
 
 Like Draco, the Basis Universal WASM transcoder runs in a Web Worker:
 
@@ -151,7 +255,7 @@ transcode(ktx2Buffer)  ──────────►  Parse KTX2 container
                         (transfer)
 ```
 
-### Codec Selection Guide
+#### Codec Selection Guide
 
 | Use Case | Codec | Compression | Quality |
 |----------|-------|-------------|---------|
@@ -160,9 +264,9 @@ transcode(ktx2Buffer)  ──────────►  Parse KTX2 container
 | UI/text | UASTC | ~4-6 bpp | Near-lossless |
 | Bulk backgrounds | ETC1S | ~0.5-1 bpp | Good enough |
 
-## GPU Upload
+### GPU Upload
 
-### Uncompressed Textures (WebGL2)
+#### Uncompressed Textures (WebGL2)
 
 ```ts
 // WebGL2 backend
@@ -170,7 +274,7 @@ gl.texImage2D(GL.TEXTURE_2D, 0, GL.SRGB8_ALPHA8, width, height, 0, GL.RGBA, GL.U
 gl.generateMipmap(GL.TEXTURE_2D)
 ```
 
-### Uncompressed Textures (WebGPU)
+#### Uncompressed Textures (WebGPU)
 
 ```ts
 device.queue.writeTexture(
@@ -182,7 +286,7 @@ device.queue.writeTexture(
 // Mipmap generation via blit chain or compute shader
 ```
 
-### Compressed Textures (WebGL2)
+#### Compressed Textures (WebGL2)
 
 ```ts
 for (let level = 0; level < mipLevels.length; level++) {
@@ -191,7 +295,7 @@ for (let level = 0; level < mipLevels.length; level++) {
 }
 ```
 
-### Compressed Textures (WebGPU)
+#### Compressed Textures (WebGPU)
 
 ```ts
 for (let level = 0; level < mipLevels.length; level++) {
@@ -205,7 +309,7 @@ for (let level = 0; level < mipLevels.length; level++) {
 }
 ```
 
-## Texture Memory Budget
+### Texture Memory Budget
 
 | Texture Type | 1024x1024 | 2048x2048 |
 |--------------|-----------|-----------|
@@ -218,7 +322,7 @@ for (let level = 0; level < mipLevels.length; level++) {
 
 KTX2/Basis textures use 4-8x less GPU memory than uncompressed, which is critical on mobile.
 
-## Sampler Cache
+### Sampler Cache
 
 Samplers are deduplicated by their descriptor. Most scenes use only 2-3 unique sampler configurations:
 
@@ -236,7 +340,7 @@ const getOrCreateSampler = (device: WrenDevice, desc: SamplerDescriptor): GPUSam
 }
 ```
 
-## Texture Disposal
+### Texture Disposal
 
 ```ts
 const disposeTexture = (texture: WrenTexture, device: WrenDevice): void => {

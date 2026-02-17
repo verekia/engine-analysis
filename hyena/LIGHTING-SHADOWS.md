@@ -1,6 +1,12 @@
-# Cascading Shadow Maps
+# Lighting and Shadows
 
-## Requirements
+## Lighting System
+
+Hyena uses a simplified lighting model focused on directional lighting with ambient support, designed for low-poly aesthetics. The lighting is computed in the fragment shader during the geometry pass using Lambert shading. Details about the lighting implementation can be found in the MATERIALS.md file where the Lambert material system is described.
+
+## Cascading Shadow Maps
+
+### Requirements
 
 - World size: ~200×200 meters (low poly)
 - Smooth shadows with no visible banding or aliasing

@@ -1,8 +1,10 @@
-# Bloom (Unreal-Style)
+# Post-Processing Effects
 
 ## Overview
 
-Hyena implements an **Unreal Engine-style bloom** pipeline. Emissive fragments glow and bleed light into surrounding pixels. The bloom intensity is controlled per-vertex through the material index system — specific parts of a mesh (eyes, neon signs, magic effects) emit light while the rest doesn't.
+Hyena's post-processing pipeline focuses on **Unreal Engine-style bloom** with MSAA support. Emissive fragments glow and bleed light into surrounding pixels. The bloom intensity is controlled per-vertex through the material index system — specific parts of a mesh (eyes, neon signs, magic effects) emit light while the rest doesn't.
+
+## Bloom (Unreal-Style)
 
 ## Pipeline
 

@@ -1,10 +1,132 @@
-# Shadows — Cascaded Shadow Maps
+# Lighting & Shadows
 
-## Overview
+## Lighting System
+
+### Overview
+
+Fennec supports two light types: **DirectionalLight** (single sun/moon light) and **AmbientLight** (uniform ambient illumination). The lighting model is intentionally simple — ambient + Lambertian diffuse, no specular — to match the low-poly aesthetic and maintain performance.
+
+### Light Types
+
+#### DirectionalLight
+
+Represents a distant light source with parallel rays (sun, moon). Only one directional light can cast shadows.
+
+```typescript
+interface DirectionalLight extends SceneNode {
+  type: 'DirectionalLight'
+  direction: Vec3              // Normalized direction vector (default: [0, 0, -1])
+  color: Vec3                  // RGB color (default: [1, 1, 1])
+  intensity: number            // Intensity multiplier (default: 1.0)
+  castShadow: boolean          // Enable shadow mapping (default: true)
+  shadowConfig?: ShadowConfig  // Cascaded shadow map settings
+}
+```
+
+Usage:
+```typescript
+const sun = new DirectionalLight({
+  direction: vec3.normalize(vec3.create(), [1, 1, -2]),  // Top-right, slightly down
+  color: [1.0, 0.95, 0.9],  // Warm sunlight
+  intensity: 1.2,
+  castShadow: true,
+})
+scene.add(sun)
+scene.shadowLight = sun  // Mark as the shadow-casting light
+```
+
+#### AmbientLight
+
+Uniform lighting applied to all surfaces regardless of orientation. No direction, no shadows.
+
+```typescript
+interface AmbientLight extends SceneNode {
+  type: 'AmbientLight'
+  color: Vec3        // RGB color (default: [1, 1, 1])
+  intensity: number  // Intensity multiplier (default: 0.2)
+}
+```
+
+Usage:
+```typescript
+const ambient = new AmbientLight({
+  color: [0.5, 0.6, 0.7],  // Cool sky color
+  intensity: 0.3,
+})
+scene.add(ambient)
+```
+
+### Shader Integration
+
+Lights are uploaded to a shared UBO/uniform block each frame:
+
+```glsl
+// WebGL2 UBO
+layout(std140) uniform SceneLights {
+  vec4 ambientColor;       // rgb = color, a = intensity
+  vec4 directionalDir;     // xyz = normalized direction, w unused
+  vec4 directionalColor;   // rgb = color, a = intensity
+};
+
+// Fragment shader lighting calculation
+vec3 computeLighting(vec3 baseColor, vec3 worldNormal) {
+  // Ambient term
+  vec3 ambient = ambientColor.rgb * ambientColor.a * baseColor;
+
+  // Directional diffuse (Lambert)
+  float NdotL = max(dot(worldNormal, -directionalDir.xyz), 0.0);
+  vec3 diffuse = directionalColor.rgb * directionalColor.a * NdotL * baseColor;
+
+  return ambient + diffuse;
+}
+```
+
+### Scene Light Management
+
+The `Scene` object maintains a flat list of all lights for efficient access:
+
+```typescript
+interface Scene {
+  lights: Light[]                      // All lights in the scene (ambient + directional)
+  shadowLight: DirectionalLight | null // The one light that casts shadows
+
+  // Internal flat lists (rebuilt when scene graph changes)
+  _ambientLights: AmbientLight[]
+  _directionalLights: DirectionalLight[]
+}
+
+// When a light is added/removed, rebuild light lists
+const rebuildLightLists = (scene: Scene) => {
+  scene._ambientLights = []
+  scene._directionalLights = []
+
+  scene.traverse((node) => {
+    if (node.type === 'AmbientLight') scene._ambientLights.push(node)
+    if (node.type === 'DirectionalLight') scene._directionalLights.push(node)
+  })
+
+  // Combine all lights for UBO upload
+  scene.lights = [...scene._ambientLights, ...scene._directionalLights]
+}
+```
+
+### Lighting Budget
+
+For the 200x200m low-poly world, lighting is restricted to:
+- **1 directional light** (the sun/moon, casts shadows)
+- **1 ambient light** (global fill)
+
+This keeps the shader simple, UBO small, and maintains the stylized low-poly aesthetic. No point lights, no spot lights.
+
+---
+
+## Shadows — Cascaded Shadow Maps
+
+### Overview
 
 Fennec implements **Cascaded Shadow Maps (CSM)** for the single directional light that casts shadows. CSM splits the camera frustum into multiple depth ranges (cascades), each rendered to its own region of a shadow atlas. This provides smooth, high-resolution shadows across the entire 200m game world without requiring enormous shadow map resolutions.
 
-## Why CSM
+### Why CSM
 
 For a 200x200m low-poly world, a single shadow map would need to be extremely high-resolution to avoid blocky shadows near the camera. CSM solves this by allocating more shadow map resolution to nearby geometry and less to distant geometry:
 
@@ -14,9 +136,9 @@ For a 200x200m low-poly world, a single shadow map would need to be extremely hi
 | CSM 3 cascades | 3x 1024x1024 | Sharp near, acceptable far |
 | CSM 3 cascades | 3x 2048x2048 | Sharp everywhere |
 
-## Architecture
+### Architecture
 
-### Cascade Configuration
+#### Cascade Configuration
 
 ```typescript
 interface ShadowConfig {
@@ -32,7 +154,7 @@ interface ShadowConfig {
 }
 ```
 
-### Shadow Atlas Layout
+#### Shadow Atlas Layout
 
 All cascades are packed into a single 2D texture atlas to minimize texture binds:
 
@@ -47,7 +169,7 @@ Atlas = 3072 x 1024
 └──────────┴──────────┴──────────┘
 ```
 
-### Cascade Split Scheme
+#### Cascade Split Scheme
 
 Splits are computed using a logarithmic/linear blend (controlled by `lambda`):
 
@@ -79,9 +201,9 @@ With `lambda = 0.5`, `near = 0.1`, `far = 200`:
 - Cascade 1: ~8m – ~45m (mid range)
 - Cascade 2: ~45m – 200m (far range)
 
-## Shadow Map Rendering
+### Shadow Map Rendering
 
-### Per-Cascade Light Matrix
+#### Per-Cascade Light Matrix
 
 For each cascade, compute a tight orthographic projection that fits the cascade's frustum slice:
 
@@ -139,7 +261,7 @@ const computeCascadeLightMatrix = (
 }
 ```
 
-### Shadow Stabilization
+#### Shadow Stabilization
 
 To prevent shadow edges from shimmering as the camera moves, snap the shadow matrix to texel-sized increments:
 
@@ -165,7 +287,7 @@ const stabilizeShadowMatrix = (lightVP: Mat4, mapSize: number) => {
 }
 ```
 
-### Depth-Only Render Pass
+#### Depth-Only Render Pass
 
 Shadow map rendering uses a minimal depth-only shader with no fragment output:
 
@@ -189,7 +311,7 @@ void main() {
 
 For skinned meshes, the shadow vertex shader also applies GPU skinning.
 
-### Per-Cascade Culling
+#### Per-Cascade Culling
 
 Objects are culled per-cascade. An object might be visible in cascade 1 but not cascade 0. This avoids rendering distant objects into the near cascade:
 
@@ -228,9 +350,9 @@ const renderShadowMaps = (light: DirectionalLight, meshes: Mesh[], camera: Camer
 }
 ```
 
-## Shadow Sampling (Main Pass)
+### Shadow Sampling (Main Pass)
 
-### Cascade Selection
+#### Cascade Selection
 
 In the main fragment shader, determine which cascade to sample by comparing the fragment's view-space depth to the cascade split distances:
 
@@ -250,7 +372,7 @@ int getCascadeIndex(float viewZ) {
 }
 ```
 
-### PCF Soft Shadows
+#### PCF Soft Shadows
 
 Percentage-Closer Filtering samples multiple shadow map texels and averages the results for soft edges:
 
@@ -288,7 +410,7 @@ float sampleShadow(vec3 worldPos, vec3 worldNormal, float viewZ) {
 }
 ```
 
-### WebGPU Shadow Sampling
+#### WebGPU Shadow Sampling
 
 WebGPU has native `textureSampleCompare` which does hardware PCF:
 
@@ -302,7 +424,7 @@ fn sampleShadowWebGPU(shadowCoord: vec3f) -> f32 {
 }
 ```
 
-## Cascade Debug Visualization
+### Cascade Debug Visualization
 
 In debug mode, cascades can be color-coded to visualize which cascade covers which area:
 
@@ -317,7 +439,7 @@ finalColor = mix(finalColor, cascadeDebugColor(cascade), 0.3);
 #endif
 ```
 
-## Performance Budget
+### Performance Budget
 
 | Operation | Cost | Notes |
 |-----------|------|-------|
@@ -328,7 +450,7 @@ finalColor = mix(finalColor, cascadeDebugColor(cascade), 0.3);
 | Shadow sampling (PCF 3x3) | ~0.2ms | GPU, integrated into main pass |
 | **Total shadow cost** | **~1-2ms** | Within 16ms budget |
 
-## Configuration Recommendations
+### Configuration Recommendations
 
 | World Size | Cascades | Map Size | Far | Notes |
 |------------|----------|----------|-----|-------|

@@ -1,11 +1,113 @@
-# Cascaded Shadow Maps
+# Lighting & Shadows
 
 ## Overview
 
-Mantis uses Cascaded Shadow Maps (CSM) for directional light shadows. CSM
-splits the view frustum into multiple depth ranges (cascades), each rendered
-into its own shadow map. Near objects get high-resolution shadows; far objects
-get lower resolution. This is ideal for the target world size (200×200 m).
+Mantis provides a minimal but effective lighting model designed for stylized, low-poly games:
+
+1. **Directional Light** — Single primary light source (sun/moon) with cascaded shadow maps
+2. **Ambient Light** — Constant global illumination (no complex GI)
+3. **Lambert Diffuse Shading** — Simple N·L (normal dot light) for convincing 3D appearance
+
+This combination provides excellent visual quality for stylized games at a fraction of the cost of PBR systems.
+
+## Lighting Model
+
+### Directional Light
+
+The primary light source is a single directional light (infinite distance, parallel rays). This models sunlight or moonlight.
+
+```typescript
+const dirLight = scene.createDirectionalLight({
+  direction: [-0.5, -0.3, -0.8],  // pointing down and to the side
+  color: [1, 0.95, 0.9],           // warm white
+  intensity: 1.0,
+  castShadow: true,
+})
+```
+
+**Properties:**
+- **direction**: Normalized vector indicating light direction (world space, Z-up)
+- **color**: RGB color of the light
+- **intensity**: Multiplier for light color
+- **castShadow**: Whether this light casts shadows (see Shadow section below)
+
+### Ambient Light
+
+Ambient light provides constant illumination from all directions. This prevents fully black shadows and models scattered environmental light.
+
+```typescript
+scene.ambientLight = {
+  color: [0.3, 0.35, 0.4],  // cool tint
+  intensity: 0.5,
+}
+```
+
+The ambient contribution is simply added to the final color without any directional calculation.
+
+### Lambert Diffuse Shading
+
+The `LambertMaterial` computes lighting using the classic Lambertian reflectance model:
+
+```glsl
+// Fragment shader
+vec3 computeLighting(vec3 normal, vec3 lightDir) {
+  // Diffuse term: N·L clamped to [0,1]
+  float NdotL = max(dot(normal, lightDir), 0.0);
+
+  // Combine directional and ambient
+  vec3 lighting = ambientColor * ambientIntensity
+                + dirLightColor * dirLightIntensity * NdotL;
+
+  return lighting;
+}
+```
+
+This produces convincing diffuse shading with:
+- Surfaces facing the light receive full illumination
+- Surfaces perpendicular to the light receive 50% illumination (NdotL = 0)
+- Surfaces facing away receive only ambient light
+- ~15 ALU operations per fragment (vs ~80+ for PBR)
+
+### Lighting in Fragment Shader Flow
+
+From `LambertMaterial`:
+
+```
+1. Start with baseColor = material.color
+2. If HAS_COLOR_TEXTURE: baseColor *= texture(colorMap, uv).rgb
+3. If HAS_VERTEX_COLORS: baseColor *= vertexColor.rgb
+4. If HAS_MATERIAL_INDEX: baseColor *= palette[materialIndex].rgb
+
+5. Compute lighting:
+   a. diffuse = max(dot(worldNormal, lightDir), 0.0)
+   b. lighting = ambientColor + dirLightColor × diffuse
+   c. If HAS_SHADOWS: lighting *= shadowFactor (CSM lookup)
+   d. If HAS_AO_TEXTURE: lighting *= texture(aoMap, uv).r
+   e. baseColor *= lighting
+
+6. Determine emissive (if HAS_MATERIAL_INDEX):
+   emissive = palette[materialIndex].emissive
+
+7. Output:
+   Color target: vec4(baseColor + emissive, alpha)
+```
+
+### Why Not PBR?
+
+For stylized, low-poly games, Lambert provides excellent visual results without the overhead of physically-based rendering:
+
+| | Lambert | PBR (Cook-Torrance) |
+|---|---|---|
+| Fragment shader ALU | ~15 ops | ~80+ ops |
+| Textures needed | color, AO | albedo, metallic, roughness, normal, AO |
+| Visual quality (stylized) | Excellent | Marginal improvement |
+| Performance (mobile) | Fast | 3–5× slower per fragment |
+
+---
+
+## Cascaded Shadow Maps
+
+Mantis uses Cascaded Shadow Maps (CSM) for directional light shadows. CSM splits the view frustum into multiple depth ranges (cascades), each rendered into its own shadow map. Near objects get high-resolution shadows; far objects get lower resolution. This is ideal for the target world size (200×200 m).
 
 ## Cascade Configuration
 
@@ -30,9 +132,7 @@ For camera near=0.1, far=200:
   Cascade 2:  40   – 200 m   (far range, lowest detail)
 ```
 
-Logarithmic splits allocate more resolution to near geometry where shadow
-detail is most noticeable. The linear blend prevents the near cascade from
-being too small.
+Logarithmic splits allocate more resolution to near geometry where shadow detail is most noticeable. The linear blend prevents the near cascade from being too small.
 
 ```typescript
 const computeCascadeSplits = (near: number, far: number, cascadeCount: number, lambda: number): number[] => {
@@ -52,8 +152,7 @@ const computeCascadeSplits = (near: number, far: number, cascadeCount: number, l
 
 ## Shadow Atlas Layout
 
-All three cascades are packed into a single depth texture to avoid texture
-switching during the shading pass:
+All three cascades are packed into a single depth texture to avoid texture switching during the shading pass:
 
 ```
 ┌────────────────┬────────────────┬────────────────┐
@@ -73,8 +172,7 @@ One bind group binding, one texture, zero switches.
 
 ### Per-Cascade Light Projection
 
-For each cascade, compute a tight orthographic projection that encloses the
-cascade's portion of the view frustum:
+For each cascade, compute a tight orthographic projection that encloses the cascade's portion of the view frustum:
 
 ```typescript
 const computeCascadeVP = (
@@ -128,8 +226,7 @@ const computeCascadeVP = (
 
 ### Texel Snapping
 
-As the camera moves, the light's orthographic projection shifts. Without
-snapping, shadow texels jitter, causing a distracting "swimming" effect.
+As the camera moves, the light's orthographic projection shifts. Without snapping, shadow texels jitter, causing a distracting "swimming" effect.
 
 Fix: snap the projection's origin to shadow map texel boundaries:
 
@@ -181,13 +278,9 @@ const renderShadowPass = (renderer: Renderer, cascades: CascadeInfo[]) => {
 }
 ```
 
-**Depth-only shader:** The shadow pass uses a minimal vertex shader (just
-transform position) and no fragment shader output. This is ~3× faster than
-full shading.
+**Depth-only shader:** The shadow pass uses a minimal vertex shader (just transform position) and no fragment shader output. This is ~3× faster than full shading.
 
-**Front-to-back sorting:** Objects are sorted by distance to the light for
-each cascade. Early-Z rejection discards occluded fragments without running
-the vertex shader.
+**Front-to-back sorting:** Objects are sorted by distance to the light for each cascade. Early-Z rejection discards occluded fragments without running the vertex shader.
 
 ## Shadow Sampling (Fragment Shader)
 
@@ -215,8 +308,7 @@ shadowCoord.x = (shadowCoord.x + float(cascadeIndex)) / 3.0;
 
 ### PCF Filtering (3×3 Poisson)
 
-Percentage Closer Filtering samples multiple points around the shadow
-coordinate and averages the results for smooth shadow edges:
+Percentage Closer Filtering samples multiple points around the shadow coordinate and averages the results for smooth shadow edges:
 
 ```glsl
 const vec2 poissonDisk[9] = vec2[](
@@ -292,7 +384,9 @@ float bias = max(0.005 * (1.0 - dot(normal, lightDir)), 0.001);
 | Shadow sampling (9-tap PCF) | ~0.3 ms (GPU, per full-screen pixel) |
 | Total shadow overhead | ~3 ms GPU |
 
-## Shadow API
+## API
+
+### Directional Light with Shadows
 
 ```typescript
 const dirLight = scene.createDirectionalLight({
@@ -310,7 +404,30 @@ const dirLight = scene.createDirectionalLight({
   },
 })
 
-// Meshes cast and receive shadows by default if material has shadows: true
+// Update light direction at runtime
+dirLight.direction = [-0.3, -0.5, -0.8]
+dirLight.intensity = 0.8
+```
+
+### Ambient Light
+
+```typescript
+scene.ambientLight = {
+  color: [0.3, 0.35, 0.4],
+  intensity: 0.5,
+}
+```
+
+### Material Shadow Control
+
+```typescript
+// Materials receive shadows when using LambertMaterial with shadows: true
+const lambert = new LambertMaterial({
+  color: [1, 1, 1],
+  shadows: true,   // receive shadows (default true for Lambert)
+})
+
+// Meshes can control shadow casting/receiving
 const mesh = scene.createMesh(geometry, lambertMaterial)
 mesh.castShadow = true       // default true
 mesh.receiveShadow = true    // controlled by material.shadows
