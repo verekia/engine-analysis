@@ -8,7 +8,7 @@
 - **Y** = forward
 - **Z** = up
 
-Matches Blender convention. glTF Y-up assets are converted at import time (see ASSETS.md). All math functions, constants, and `lookAt` are implemented with Z-up baked in.
+Matches Blender convention. All math functions, constants, and `lookAt` are implemented with Z-up baked in.
 
 ## Data Backing
 
@@ -217,14 +217,10 @@ quatMultiply(out, a, b): Quat
 quatInvert(out, a): Quat
 quatConjugate(out, a): Quat
 quatNormalize(out, a): Quat
-quatFromEuler(out, x, y, z): Quat                        // ZYX intrinsic rotation order
-quatToEuler(out, q): Vec3                                  // Returns [x, y, z] radians
 quatFromAxisAngle(out, axis, angle): Quat
 quatSlerp(out, a, b, t): Quat                            // Shortest-path
 quatLookRotation(out, forward, up): Quat                  // Z-up aware
 ```
-
-`quatFromEuler` uses ZYX rotation order (rotate around Z, then Y, then X) — the most common game engine convention.
 
 ### AABB
 
@@ -276,22 +272,6 @@ mat4Perspective(out, fov, aspect, near, far, 'neg-one-to-one')
 ```
 
 The backend provides its depth range convention, and the camera system passes it through. User code doesn't need to think about this.
-
-## Euler Angles
-
-**ZYX intrinsic rotation order:**
-
-```typescript
-const quatFromEuler = (out: Quat, x: number, y: number, z: number): Quat => {
-  // Intrinsic ZYX: rotate Z first, then Y, then X
-  // Equivalent to extrinsic XYZ
-  // ...
-}
-```
-
-ZYX is the most common game engine convention and avoids gimbal lock in typical camera orientations (pitch/yaw/roll).
-
-Euler angles are a **convenience conversion only** — not a storage format. Quaternions are the internal representation for all rotations.
 
 ## Constants
 

@@ -39,7 +39,7 @@ voidcore/
 │   ├── renderer/      # Render loop, pass orchestration, draw call sorting
 │   │   ├── renderer.ts       # Main render function
 │   │   ├── sort.ts           # 64-bit radix sort
-│   │   ├── passes/           # Shadow, opaque, transparent, composite, bloom, tonemap
+│   │   ├── passes/           # Shadow, opaque, transparent, composite, bloom, blit
 │   │   └── uniforms.ts       # Shared uniform buffer management
 │   ├── scene/         # Scene graph, nodes, transforms, dirty flags
 │   │   ├── node.ts           # Base node (position, rotation, scale, dirty flags)
@@ -64,10 +64,7 @@ voidcore/
 │   │   ├── mixer.ts
 │   │   └── action.ts
 │   ├── loaders/       # glTF, Draco, KTX2/Basis
-│   │   ├── gltf.ts           # Main glTF loader
-│   │   ├── draco-worker.ts   # Draco WASM worker
-│   │   ├── basis-worker.ts   # Basis WASM worker
-│   │   └── worker-pool.ts    # Shared worker pool (2-4 workers)
+│   │   └── gltf.ts           # Main glTF loader
 │   ├── lighting/      # Directional light, ambient light, CSM
 │   │   ├── directional.ts
 │   │   └── csm.ts            # Cascade computation, shadow matrix generation
@@ -75,10 +72,9 @@ voidcore/
 │   │   ├── bvh.ts            # SAH construction, flat node layout
 │   │   ├── raycaster.ts      # Two-level BVH traversal
 │   │   └── frustum.ts        # AABB frustum culling
-│   ├── postfx/        # Bloom, OIT composite, tone mapping
+│   ├── postfx/        # Bloom, OIT composite
 │   │   ├── bloom.ts          # Downsample/upsample chain
-│   │   ├── oit-composite.ts  # WBOIT composite pass
-│   │   └── tonemap.ts        # ACES filmic
+│   │   └── oit-composite.ts  # WBOIT composite pass
 │   ├── controls/
 │   │   └── orbit.ts          # OrbitControls
 │   ├── overlay/
@@ -222,7 +218,7 @@ Every frame executes this sequence:
 13. MSAA resolve (multisample → single-sample for color + emissive)
 14. OIT composite (blend transparent result over resolved opaque)
 15. Bloom (emissive → downsample chain → upsample chain → composite)
-16. Tone mapping + final blit to screen (ACES filmic)
+16. Final blit to screen (gamma correction)
 17. HTML overlay update (project 3D positions to screen coordinates)
 18. Reset frame-scoped scratch pools
 ```
@@ -277,9 +273,8 @@ interface Device {
 ## Threading Model
 
 - **Main thread**: scene graph, render loop, user callbacks, GPU command submission
-- **Web Workers**: Draco mesh decoding, Basis texture transcoding, optional BVH construction
+- **Web Workers**: optional BVH construction for large meshes
 - **Communication**: `postMessage` with `Transferable` typed arrays (zero-copy transfer)
-- **Worker pool**: 2-4 workers, scaled to `Math.min(4, Math.max(2, navigator.hardwareConcurrency - 1))`
 
 The render loop stays on the main thread. OffscreenCanvas would prevent HTML overlay compositing, and the synchronization overhead is not justified given the 16.6ms frame budget.
 

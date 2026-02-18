@@ -26,7 +26,7 @@ Every frame executes these passes in fixed order:
 4. MSAA Resolve     — Resolve multisample → single-sample
 5. OIT Composite    — Blend transparent result over resolved opaque
 6. Bloom            — Downsample emissive chain → upsample → composite
-7. Final Blit       — ACES tone mapping + gamma correction → screen
+7. Final Blit       — gamma correction → screen
 ```
 
 ## Render Target Layout
@@ -171,7 +171,6 @@ src/materials/shaders/
   bloom-downsample.frag.glsl / .wgsl
   bloom-upsample.frag.glsl / .wgsl
   oit-composite.frag.glsl / .wgsl
-  tonemap.frag.glsl / .wgsl
   fullscreen.vert.glsl / .wgsl
 ```
 
@@ -265,7 +264,7 @@ device.writeBuffer(objectBuffer, 0, objectDataArray, 0, visibleCount * OBJECT_ST
 pass.setBindGroup(2, objectBindGroup, [objectIndex * OBJECT_STRIDE])
 ```
 
-For skinned meshes, bone matrices are packed after the world matrix within the same stride (128 bones × 64 bytes = 8KB per skinned mesh, using a texture fallback if >128 bones).
+For skinned meshes, bone matrices are packed after the world matrix within the same stride (32 bones × 64 bytes = 2KB per skinned mesh). The hard 32-bone limit means the UBO is always sufficient — no texture fallback path.
 
 ## Per-Draw Overhead Target
 
@@ -286,12 +285,12 @@ Transparent pass:          0.3-0.5ms  (GPU, WBOIT)
 MSAA resolve:              0.2-0.5ms  (GPU)
 OIT composite:             0.1-0.15ms (GPU, fullscreen)
 Bloom:                     0.5-1.1ms  (GPU, progressive)
-Tone mapping + blit:       0.1-0.2ms  (GPU)
+Final blit:                0.05ms     (GPU)
 ─────────────────────────────────────────
 JS overhead total:         1.0-2.0ms
-GPU work total:            6.0-10.5ms
-Total frame time:          7.0-12.5ms
-Headroom:                  4.1-9.6ms
+GPU work total:            5.9-10.3ms
+Total frame time:          6.9-12.3ms
+Headroom:                  4.3-9.7ms
 ```
 
 JS and GPU overlap (JS prepares frame N+1 while GPU renders frame N). Effective frame time: max(JS, GPU).

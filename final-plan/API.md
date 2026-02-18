@@ -27,7 +27,6 @@ const engine = await createEngine(canvas, {
   antialias: true,              // 4x MSAA (default true)
   shadows: true,                // or { mapSize: 1024, cascades: 3, ... }
   bloom: true,                  // or { intensity: 0.5, levels: 5, ... }
-  toneMapping: 'aces',          // 'aces' | 'reinhard' | 'none'
   debug: false,                 // Verbose validation
 })
 ```
@@ -143,7 +142,7 @@ const sun    = createDirectionalLight({ color: [1, 1, 1], intensity: 1.0, castSh
 ```typescript
 // Position, rotation, scale
 mesh.position.set(1, 0, 3)                           // Vec3 (Float32Array view)
-mesh.rotation = quatFromEuler(0, 0, Math.PI / 4)     // Quaternion
+mesh.rotation = quatFromAxisAngle(out, [0, 0, 1], Math.PI / 4)  // Quaternion
 mesh.scale.set(2, 2, 2)                               // Vec3 (Float32Array view)
 
 // Visibility and shadow
@@ -272,8 +271,8 @@ controls.dispose()
 
 ```typescript
 const gltf = await loadGLTF('/model.glb', engine, {
-  draco: { wasmUrl: '/wasm/draco.wasm' },
-  ktx2: { wasmUrl: '/wasm/basis.wasm' },
+  draco: { decoderPath: '/draco-1.5.7/' },
+  ktx2: { transcoderPath: '/basis-1.50/' },
 })
 
 // Use loaded data
@@ -401,7 +400,7 @@ import {
   createEngine, createScene, createPerspectiveCamera,
   createDirectionalLight, createMesh, createPlaneGeometry,
   createLambertMaterial, createOrbitControls, createAnimationMixer,
-  loadGLTF, quatFromEuler,
+  loadGLTF, quatFromAxisAngle,
 } from 'voidcore'
 
 const canvas = document.querySelector('canvas')!
@@ -429,7 +428,7 @@ scene.add(ground)
 
 // Character
 const gltf = await loadGLTF('/character.glb', engine, {
-  draco: { wasmUrl: '/wasm/draco.wasm' },
+  draco: { decoderPath: '/draco-1.5.7/' },
 })
 scene.add(gltf.scene)
 
@@ -467,7 +466,7 @@ import { Canvas, useFrame, useGLTF, useAnimations, Html, OrbitControls } from 'v
 import { Suspense, useState, useRef, useEffect } from 'react'
 
 const Character = () => {
-  const gltf = useGLTF('/character.glb', { draco: { wasmUrl: '/wasm/draco.wasm' } })
+  const gltf = useGLTF('/character.glb', { draco: { decoderPath: '/draco-1.5.7/' } })
   const { actions } = useAnimations(gltf.animations, gltf.skeletons[0])
 
   useEffect(() => { actions.idle?.play() }, [])

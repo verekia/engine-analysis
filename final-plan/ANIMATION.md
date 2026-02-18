@@ -36,22 +36,13 @@ vec3 skinnedNormal = mat3(boneMatrix) * a_normal;  // No need for inverse transp
 
 ### Bone Matrix Storage
 
-**UBO for ≤128 bones** (vast majority of game characters):
+Hard limit of **32 bones per skeleton**:
 
 ```
-128 bones × 64 bytes (mat4) = 8KB — within UBO size limits on all platforms
+32 bones × 64 bytes (mat4) = 2KB — well within UBO size limits on all platforms
 ```
 
-Bone matrices are packed into the per-object uniform buffer (bind group 2), after the world matrix. The shader indexes into the array by joint index.
-
-**Texture fallback for >128 bones** (rare, complex characters):
-
-```
-RGBA32F texture: 4 texels per bone matrix (4 rows × 4 floats = 16 floats)
-128+ bones: switch to texture-based lookup in the vertex shader
-```
-
-This fallback is detected per-skeleton at bind time.
+Bone matrices are packed into the per-object uniform buffer (bind group 2), after the world matrix. The shader indexes into the array by joint index. No texture fallback path needed — the UBO is always sufficient.
 
 ### Upload
 
@@ -245,18 +236,6 @@ handBone.add(swordMesh)
 The attached mesh inherits the bone's animated world transform through normal scene graph propagation. When the animation system updates bone world matrices, the dirty flag propagation marks the sword mesh dirty, and its world matrix is recomputed from the bone's transform.
 
 No special attachment API, no extra frame-delay — it uses the same update path as every other parent-child relationship.
-
-## Coordinate Conversion
-
-glTF uses Y-up. Voidcore uses Z-up. All conversion is baked at import time:
-
-- Bone rest poses (bind matrices) → converted to Z-up
-- Inverse bind matrices → converted to Z-up
-- Keyframe position values → Y↔Z swapped
-- Keyframe rotation quaternions → converted to Z-up orientation
-- Scene node transforms → converted to Z-up
-
-The animation system operates entirely in Z-up coordinates with **zero per-frame conversion overhead**.
 
 ## Performance Budget
 

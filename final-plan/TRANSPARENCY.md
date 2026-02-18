@@ -122,7 +122,7 @@ void main() {
 4. MSAA resolve          (opaque color + emissive → 1x)
 5. OIT composite         (blend transparent over resolved opaque)
 6. Bloom                 (downsample/upsample on emissive)
-7. Tone mapping + blit   (ACES, gamma, output to screen)
+7. Final blit            (gamma correction, output to screen)
 ```
 
 The transparent pass runs after opaque but before MSAA resolve. It reads the opaque depth buffer (for depth testing) but writes to separate non-MSAA targets. The OIT composite happens after MSAA resolve so it blends against the clean resolved color.

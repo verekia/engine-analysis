@@ -6,7 +6,7 @@ Voidcore's post-processing pipeline consists of three stages after the main scen
 
 1. **OIT Composite** — blend transparent result over resolved opaque (covered in TRANSPARENCY.md)
 2. **Bloom** — Unreal-style progressive downsample/upsample driven by MRT emissive
-3. **Tone Mapping** — ACES filmic HDR-to-LDR conversion + gamma correction
+3. **Final Blit** — gamma correction → screen
 
 ## Bloom
 
@@ -121,7 +121,7 @@ This additive blend makes emissive surfaces appear to glow without affecting non
 
 ### Full-Screen Geometry
 
-All full-screen passes (downsample, upsample, composite, tone mapping) use a single oversized triangle:
+All full-screen passes (downsample, upsample, composite, blit) use a single oversized triangle:
 
 ```glsl
 // Vertex shader — no vertex buffer needed, uses gl_VertexIndex / gl_VertexID
@@ -132,50 +132,17 @@ v_uv = position;
 
 A single triangle that covers the full viewport is more efficient than a quad (2 triangles) because there's no diagonal edge causing redundant fragment work.
 
-## Tone Mapping
-
-### ACES Filmic
-
-Applied after bloom compositing. Converts HDR values to LDR for display:
-
-```glsl
-vec3 acesFilmic(vec3 x) {
-  const float a = 2.51;
-  const float b = 0.03;
-  const float c = 2.43;
-  const float d = 0.59;
-  const float e = 0.14;
-  return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
-}
-```
-
-ACES provides:
-- Natural film-like response curve
-- Graceful handling of both dark and bright values
-- Desaturation in bright areas (natural look)
-- No harsh clipping at high intensity
+## Final Blit
 
 ### Gamma Correction
 
-Applied after tone mapping (if the output target is not sRGB):
+Applied after bloom compositing:
 
 ```glsl
 fragColor.rgb = pow(fragColor.rgb, vec3(1.0 / 2.2));
 ```
 
 On WebGPU with an sRGB surface format, gamma correction is handled by the hardware. On WebGL2, it's applied in the shader.
-
-### Alternative Tone Mappers
-
-Configurable via the `toneMapping` option:
-
-```typescript
-const engine = await createEngine(canvas, {
-  toneMapping: 'aces',       // Default: ACES filmic
-  // toneMapping: 'reinhard', // Simpler, less contrast
-  // toneMapping: 'none',     // Linear (no tone mapping)
-})
-```
 
 ## MSAA Integration
 
@@ -185,7 +152,7 @@ MSAA is resolved **before** post-processing:
 Opaque pass (4x MSAA) → Resolve → [1x Color, 1x Emissive]
                                           ↓
 Bloom operates on resolved 1x emissive texture
-Tone mapping operates on resolved 1x color + bloom
+Final blit operates on resolved 1x color + bloom
 ```
 
 OIT buffers are always 1x (no MSAA on transparent pass — WBOIT already provides smooth edges through weighted blending, and MSAA on float targets is expensive).
@@ -199,7 +166,6 @@ const engine = await createEngine(canvas, {
     intensity: 0.5,      // Bloom mix strength (0 = no bloom, 1 = full bloom)
     levels: 5,           // Downsample levels (default 5)
   },
-  toneMapping: 'aces',     // 'aces' | 'reinhard' | 'none'
   antialias: true,         // 4x MSAA (default true)
 })
 
@@ -213,9 +179,9 @@ const engine = await createEngine(canvas, { bloom: true })
 Bloom downsample (5 levels):     ~0.3-0.5ms GPU
 Bloom upsample (5 levels):      ~0.2-0.4ms GPU
 Bloom composite:                 ~0.05ms GPU
-Tone mapping + gamma + blit:     ~0.1-0.2ms GPU
+Final blit (gamma):              ~0.05ms GPU
 ────────────────────────────────────────────────
-Total post-processing:           ~0.65-1.15ms GPU
+Total post-processing:           ~0.6-1.0ms GPU
 ```
 
 The bloom chain is the dominant cost. Each downsample/upsample level is a full-screen pass at progressively smaller resolutions, so the total cost is bounded by the half-resolution first level.

@@ -102,7 +102,6 @@ The `<Canvas>` component is the root. It:
   camera={{ position: [5, -10, 5], fov: 60 }}
   backend="auto"                          // 'auto' | 'webgpu' | 'webgl2'
   antialias={true}                        // 4x MSAA
-  toneMapping="aces"
   onCreated={(engine) => { }}             // Called after initialization
   style={{ width: '100%', height: '100%' }}
 >
@@ -190,7 +189,7 @@ Per-frame callback. Runs every `requestAnimationFrame`, outside of React's rende
 
 ```typescript
 useFrame((deltaTime, engine) => {
-  meshRef.current.rotation = quatFromEuler(0, 0, elapsed * 0.5)
+  meshRef.current.rotation = quatFromAxisAngle(out, [0, 0, 1], elapsed * 0.5)
 })
 ```
 
@@ -222,7 +221,7 @@ Convenience hook for glTF loading:
 
 ```typescript
 const gltf = useGLTF('/character.glb', {
-  draco: { wasmUrl: '/wasm/draco.wasm' },
+  draco: { decoderPath: '/draco-1.5.7/' },
 })
 
 // Access scene, meshes, skeletons, animations
@@ -396,11 +395,11 @@ All props are fully typed. IDE autocompletion works for all element attributes.
 
 ```tsx
 import { Canvas, useFrame, useGLTF, useAnimations, Html, OrbitControls } from 'voidcore/react'
-import { quatFromEuler } from 'voidcore'
+import { quatFromAxisAngle } from 'voidcore'
 import { useRef, useState, Suspense } from 'react'
 
 const Character = () => {
-  const gltf = useGLTF('/character.glb', { draco: { wasmUrl: '/wasm/draco.wasm' } })
+  const gltf = useGLTF('/character.glb', { draco: { decoderPath: '/draco-1.5.7/' } })
   const { actions } = useAnimations(gltf.animations, gltf.skeletons[0])
   const [hovered, setHovered] = useState(false)
 
@@ -426,7 +425,7 @@ const SpinningBox = () => {
 
   useFrame((dt) => {
     elapsed += dt
-    ref.current.rotation = quatFromEuler(0, 0, elapsed)
+    ref.current.rotation = quatFromAxisAngle(out, [0, 0, 1], elapsed)
   })
 
   return (

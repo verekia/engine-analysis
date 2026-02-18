@@ -93,7 +93,7 @@ The prompt explicitly states "no instancing." Games needing instancing for thous
 
 **Dynamic offsets on a shared buffer.**
 
-Per-object data (world matrix + potential bone matrices): 128-256 bytes per object. Total per-frame upload:
+Per-object data: world matrix = 64 bytes (padded to 256 for alignment); skinned meshes add 32 bone matrices = 2KB. Total per-frame upload (non-skinned):
 
 ```
 2000 objects × 256 bytes = ~512KB via single buffer write
@@ -177,7 +177,7 @@ Mobile GPUs are bandwidth-constrained. Key mitigations:
 | MSAA resolve | 0.2-0.5ms |
 | OIT composite | 0.1-0.15ms |
 | Bloom (5 levels) | 0.5-1.1ms |
-| Tone mapping + blit | 0.1-0.2ms |
+| Final blit | ~0.05ms |
 
 **JS and GPU overlap:** JS prepares frame N+1 while GPU renders frame N. Effective frame time: `max(JS, GPU)` ≈ 6-10ms → 60fps achievable with headroom.
 
@@ -239,6 +239,5 @@ The following patterns are **banned** in hot paths:
 - String concatenation for shader keys (use integer bitmasks)
 - `gl.getError()` in production (synchronous stall)
 - `readPixels` unless explicitly requested (GPU stall)
-- Synchronous WASM calls on main thread (use workers)
 - `Array.push` in tight loops (use pre-sized arrays with index tracking)
 - `for...of` on typed arrays (use indexed `for` loops)

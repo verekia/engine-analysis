@@ -147,7 +147,7 @@ layout(location = 1) out vec4 fragEmissive;   // Emissive-only → Emissive RT (
 
 Emissive values are written to a separate render target that feeds directly into the bloom downsample chain. **No global brightness threshold pass** — bloom is driven purely by explicit emissive output. Only surfaces with non-zero emissive glow. This is physically motivated and gives artists precise control.
 
-The `emissiveIntensity` value controls how bright the bloom is. Values >1.0 produce stronger glow after tone mapping.
+The `emissiveIntensity` value controls how bright the bloom is. Values >1.0 produce stronger glow.
 
 ## Shader Variant System
 

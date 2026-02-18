@@ -58,11 +58,11 @@ Position (Vec3) + Rotation (Quat) + Scale (Vec3):
 
 ```typescript
 mesh.position.set(1, 0, 3)                            // Vec3 (Float32Array view)
-mesh.rotation = quatFromEuler(0, 0, Math.PI / 4)      // Quaternion [x,y,z,w]
+mesh.rotation = quatFromAxisAngle(out, [0, 0, 1], Math.PI / 4)  // Quaternion [x,y,z,w]
 mesh.scale.set(2, 2, 2)                                // Vec3 (Float32Array view)
 ```
 
-Setting any transform property marks `_dirtyLocal = true`. Euler angles are a convenience conversion function (`quatFromEuler`), not the internal storage format. Quaternions avoid gimbal lock and enable slerp blending.
+Setting any transform property marks `_dirtyLocal = true`. Quaternions are the only rotation representation — no Euler angle conversion. This avoids gimbal lock and enables slerp blending.
 
 The local matrix is computed from TRS via `mat4Compose`:
 

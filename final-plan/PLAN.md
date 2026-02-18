@@ -28,8 +28,8 @@
 | Shadows | 3-cascade CSM, 1024px default | Smooth shadows for 200m worlds |
 | Bloom | Unreal-style progressive downsample/upsample | Per-vertex emissive control via MRT |
 | BVH | Binned SAH, flat 32-byte nodes | three-mesh-bvh quality target |
-| Animation | GPU skinning, 4-bone, action-based mixer | glTF skeletal animation with crossfade |
-| Assets | glTF 2.0 + Draco + KTX2/Basis | Standard pipeline, worker-decoded |
+| Animation | GPU skinning, 4-bone weights, 32-bone limit, action-based mixer | glTF skeletal animation with crossfade, UBO always sufficient |
+| Assets | glTF 2.0 + Draco + KTX2/Basis | Standard pipeline, user-provided decoders |
 | React bindings | Custom reconciler at `voidcore/react` | R3F-style declarative scene, same package |
 | Math | Custom Float32Array-backed, functional API | Zero-alloc, Z-up baked in, GPU-uploadable |
 | Draw call sorting | 64-bit radix sort | O(n), stable, predictable |
@@ -51,7 +51,7 @@ voidcore/
     loaders/        # glTF, Draco, KTX2/Basis
     lighting/       # Directional light, ambient light, CSM shadows
     spatial/        # BVH, raycasting, frustum culling
-    postfx/         # Bloom, MSAA, OIT composite, tone mapping
+    postfx/         # Bloom, MSAA, OIT composite
     controls/       # OrbitControls
     overlay/        # HTML overlay system
     react/          # Custom reconciler, Canvas, hooks, Html component
@@ -101,12 +101,11 @@ All of the following ship in v1:
 - Basic (unlit) and Lambert (N·L diffuse) materials
 - Material index palette system (32 entries) with per-vertex color/emissive
 - Vertex colors (multiplicative blending)
-- glTF 2.0 with Draco mesh compression (WASM, worker-decoded)
-- KTX2/Basis Universal texture compression (ASTC > BC7 > ETC2 > RGBA8)
+- glTF 2.0 with Draco mesh compression (user-provided decoder)
+- KTX2/Basis Universal texture compression (user-provided transcoder, ASTC > BC7 > ETC2 > RGBA8)
 - Color textures, AO textures
 - Per-vertex bloom via MRT emissive output (Unreal-style progressive)
 - 4x MSAA (configurable)
-- ACES filmic tone mapping
 - SAH-based BVH raycasting (three-mesh-bvh quality)
 - GPU-skinned meshes with skeletal animation and crossfade
 - Frustum culling (AABB, hierarchical)
@@ -129,7 +128,7 @@ All of the following ship in v1:
 - Physics integration
 - Text rendering
 - Particle systems
-- Post-processing beyond bloom + tone mapping
+- Post-processing beyond bloom
 - PCSS / VSM / ESM shadow techniques
 - Multiple shadow-casting lights
 - Automatic instancing
